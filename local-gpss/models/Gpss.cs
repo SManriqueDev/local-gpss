@@ -19,7 +19,7 @@ public struct Search
     public List<string>? Generations { get; set; } = null;
     public bool LegalOnly { get; set; } = false;
     public bool SortDirection { get; set; } = false;
-    public string SortField { get; set; } = "latest";
+    public string SortField { get; set; } = "upload_datetime";
 }
 
 /**

@@ -16,7 +16,7 @@ public class Database
         _connection.Open();
 
         Migrate();
-        //ImportPokemons();
+            //ImportPokemons();
         /*OneTimeHeadache();*/
     }
 
@@ -40,9 +40,25 @@ public class Database
             cmd.Parameters.AddWithValue("@download_count", pokemon.Downloads);
             if (result.storedGenerationValid)
             {
-                cmd.Parameters.AddWithValue("@legal", pokemon.Legal);
+                var pkm = Helpers.TryConvert(pokemon.Base64, pokemon.Generation.ToString());
+                if (pkm == null)
+                {
+                    Console.WriteLine($"{pokemon.DownloadCode} added to malformed list (1)");
+                    malformedPokemons.Add(pokemon.Base64);
+                    continue;
+                }
+                var report = new LegalityAnalysis(pkm);
+
+                if (report.Report() == "Analysis not available for this Pokémon.")
+                {
+                    Console.WriteLine($"{pokemon.DownloadCode} added to malformed list (2)");
+                    // This is a malformed pokemon, let's blacklist it.
+                    malformedPokemons.Add(pokemon.DownloadCode);
+                    continue;
+                }
+                cmd.Parameters.AddWithValue("@legal", report.Valid);
                 cmd.Parameters.AddWithValue("@generation", pokemon.Generation);
-                cmd.Parameters.AddWithValue("@base_64", pokemon.Base64);
+                cmd.Parameters.AddWithValue("@base_64", Convert.ToBase64String(pkm.Data));
                 cmd.ExecuteNonQuery();
                 continue;
             }
@@ -53,6 +69,7 @@ public class Database
                 var pkm = Helpers.TryConvert(pokemon.Base64, gens[0]);
                 if (pkm == null)
                 {
+                    Console.WriteLine($"{pokemon.DownloadCode} added to malformed list (3)");
                     // This is a malformed pokemon, let's blacklist it.
                     malformedPokemons.Add(pokemon.DownloadCode);
                     continue;
@@ -62,6 +79,7 @@ public class Database
 
                 if (report.Report() == "Analysis not available for this Pokémon.")
                 {
+                    Console.WriteLine($"{pokemon.DownloadCode} added to malformed list (4)");
                     // This is a malformed pokemon, let's blacklist it.
                     malformedPokemons.Add(pokemon.DownloadCode);
                     continue;
@@ -91,6 +109,12 @@ public class Database
                     found = true;
                     break;
                 }
+                
+                if (report.Report() == "Analysis not available for this Pokémon.")
+                {
+                    // Malformed for this generation, skip
+                    continue;
+                }
 
                 if (lastReportSize == -1)
                 {
@@ -109,6 +133,14 @@ public class Database
                 cmd.ExecuteNonQuery();
                 continue;
             }
+            
+            if (lastReportSize == -1)
+            {
+                Console.WriteLine($"{pokemon.DownloadCode} added to malformed list (5)");
+                // we didn't find a good record, let's blacklist
+                malformedPokemons.Add(pokemon.DownloadCode);
+                continue;
+            }
 
             try
             {
@@ -125,7 +157,7 @@ public class Database
         }
 
         Console.WriteLine(
-            $"The following mons are blacklisted because they are malformed {string.Join(",", malformedPokemons)}");
+            $"The following mons are blacklisted because they are malformed \"{string.Join("\",\"", malformedPokemons)}");
 }
     private void OneTimeHeadache()
     {
@@ -192,6 +224,54 @@ public class Database
                 cmd.Parameters.Clear();
             }
         }
+    }
+
+    public bool CodeExists(double code)
+    {
+        var cmd = _connection.CreateCommand();
+        cmd.CommandText = "SELECT EXISTS(SELECT 1 FROM pokemon WHERE download_code = @code)";
+        cmd.Parameters.AddWithValue("@code", code);
+        
+        return (Int64) cmd.ExecuteScalar() == 1 ? true : false;
+    }
+
+    public string? CheckIfPokemonExists(string base64)
+    {
+        var cmd = _connection.CreateCommand();
+        cmd.CommandText = "SELECT download_code FROM pokemon WHERE base_64 = @base64";
+        cmd.Parameters.AddWithValue("@base64", base64);
+        
+        using var reader = cmd.ExecuteReader();
+        if (!reader.Read())
+        {
+            return null;
+        }
+        
+        return reader.GetString(0);
+    }
+
+
+    public void IncrementDownload(double code)
+    {
+        var cmd = _connection.CreateCommand();
+        cmd.CommandText = "UPDATE pokemon SET download_count = download_count + 1 WHERE download_code = @code";
+        cmd.Parameters.AddWithValue("@code", code);
+        cmd.ExecuteNonQuery();
+    }
+    
+    public void InsertPokemon(string base64, bool legal, double code, string generation)
+    {
+        var cmd = _connection.CreateCommand();
+        cmd.CommandText =
+            @"INSERT INTO pokemon (upload_datetime, download_code, download_count, generation, legal, base_64) VALUES (@upload_datetime, @download_code, @download_count, @generation, @legal, @base_64)";
+        cmd.Parameters.AddWithValue("@upload_datetime", DateTime.Now);
+        cmd.Parameters.AddWithValue("@download_code", code);
+        cmd.Parameters.AddWithValue("@download_count", 0);
+        cmd.Parameters.AddWithValue("@generation", generation);
+        cmd.Parameters.AddWithValue("@legal", legal);
+        cmd.Parameters.AddWithValue("@base_64", base64);
+        
+        cmd.ExecuteNonQuery();
     }
     
     public int CountPokemons(Search? search = null)

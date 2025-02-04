@@ -1,4 +1,5 @@
 using System.Text.Json;
+using local_gpss.database;
 using local_gpss.models;
 using PKHeX.Core;
 
@@ -34,10 +35,13 @@ public class CryptoSize(int partySize, int boxSize)
 
 public static class Helpers
 {
+
+    public static Random rand;
     public static void Init()
     {
         EncounterEvent.RefreshMGDB(string.Empty);
         RibbonStrings.ResetDictionary(GameInfo.Strings.ribbons);
+        rand = new();
     }
 
     public static EntityContext EntityContextFromString(string generation)
@@ -78,6 +82,18 @@ public static class Helpers
         return gameVersion;
     }
 
+    public static dynamic PokemonAndBase64FromForm(IFormFile pokemon, EntityContext context = EntityContext.None)
+    {
+        using var memoryStream = new MemoryStream();
+        pokemon.CopyTo(memoryStream);
+
+
+        return new
+        {
+            pokemon = EntityFormat.GetFromBytes(memoryStream.ToArray(), context),
+            base64 = Convert.ToBase64String(memoryStream.ToArray())
+        };
+    }
 
     public static PKM? PokemonFromForm(IFormFile pokemon, EntityContext context = EntityContext.None)
     {
@@ -85,6 +101,15 @@ public static class Helpers
         pokemon.CopyTo(memoryStream);
 
         return EntityFormat.GetFromBytes(memoryStream.ToArray(), context);
+    }
+
+    public static PKM? PokemonFromBase64(string pokemon, EntityContext? context)
+    {
+        var pkmnStrBytes = Convert.FromBase64String(pokemon);
+        if (context.HasValue) return EntityFormat.GetFromBytes(pkmnStrBytes, context.Value);
+
+
+        return EntityFormat.GetFromBytes(pkmnStrBytes);
     }
 
     public static dynamic? TryConvert(string b64, string generation)
@@ -225,6 +250,12 @@ public static class Helpers
                     case "LGPE":
                         gens.Add("7.1");
                         break;
+                    case "BDSP":
+                        gens.Add("8.2");
+                        break;
+                    case "PLA":
+                        gens.Add("8.1");
+                        break;
                     case null:
                         break;
                     default:
@@ -260,5 +291,34 @@ public static class Helpers
 
 
         return search;
+    }
+
+
+    public static double GenerateDownloadCode(int length = 10)
+    {
+        double code;
+        while (true)
+        {
+            // First number must be between 1 and 9
+            var strCode = rand.Next(1, 10).ToString();
+            // now generate the rest of the code
+            for (int i = 0; i < length-1; i++)
+                strCode = String.Concat(strCode, rand.Next(10).ToString());
+
+
+            code = double.Parse(strCode);
+            Console.WriteLine(code);
+            // Now check to see if the code is in the database already and break if it isn't
+            
+            if (Database.Instance!.CodeExists(code))
+            {
+                Console.WriteLine("fuck it exists");
+                continue;
+            }
+            
+            break;
+        }
+
+        return code;
     }
 }
