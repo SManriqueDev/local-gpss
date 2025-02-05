@@ -2,6 +2,7 @@ using System.Text.Json;
 using local_gpss.database;
 using local_gpss.models;
 using PKHeX.Core;
+using PKHeX.Core.AutoMod;
 
 namespace local_gpss.utils;
 
@@ -35,12 +36,13 @@ public class CryptoSize(int partySize, int boxSize)
 
 public static class Helpers
 {
-
     public static Random rand;
+
     public static void Init()
     {
         EncounterEvent.RefreshMGDB(string.Empty);
         RibbonStrings.ResetDictionary(GameInfo.Strings.ribbons);
+        Legalizer.EnableEasterEggs = false;
         rand = new();
     }
 
@@ -294,28 +296,23 @@ public static class Helpers
     }
 
 
-    public static double GenerateDownloadCode(int length = 10)
+    public static string GenerateDownloadCode(int length = 10)
     {
-        double code;
+        string code = "";
         while (true)
         {
-            // First number must be between 1 and 9
-            var strCode = rand.Next(1, 10).ToString();
-            // now generate the rest of the code
-            for (int i = 0; i < length-1; i++)
-                strCode = String.Concat(strCode, rand.Next(10).ToString());
+            for (int i = 0; i < length; i++)
+                code = String.Concat(code, rand.Next(10).ToString());
 
 
-            code = double.Parse(strCode);
-            Console.WriteLine(code);
             // Now check to see if the code is in the database already and break if it isn't
-            
+
             if (Database.Instance!.CodeExists(code))
             {
                 Console.WriteLine("fuck it exists");
                 continue;
             }
-            
+
             break;
         }
 
