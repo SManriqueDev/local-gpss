@@ -260,12 +260,18 @@ public class Database
     }
 
 
-    public void IncrementDownload(string code)
+    public void IncrementDownload(string table, string code)
     {
         var cmd = _connection.CreateCommand();
-        cmd.CommandText = "UPDATE pokemon SET download_count = download_count + 1 WHERE download_code = @code";
+        cmd.CommandText = $"UPDATE {table} SET download_count = download_count + 1 WHERE download_code = @code";
         cmd.Parameters.AddWithValue("@code", code);
         cmd.ExecuteNonQuery();
+        if (table == "bundle")
+        {
+            cmd.CommandText = "UPDATE pokemon SET download_count = download_count + 1 WHERE id in (SELECT pokemon_id from bundle_pokemon where bundle_id = (select id from bundle where download_code = @code))";
+            cmd.ExecuteNonQuery();
+        }
+        
     }
 
     public void InsertPokemon(string base64, bool legal, string code, string generation)

@@ -90,16 +90,22 @@ public class Gpss : Controller
     }
 
 
-    public dynamic Download([FromRoute] string code)
+    public dynamic Download([FromRoute] string entityType, [FromRoute] string code)
     {
+        if (!supportedEntities.Contains(entityType))
+        {
+            return BadRequest(new { message = "Invalid entity type." });
+        }
+        
         if (Database.Instance == null)
         {
             throw new Exception("Database not available.");
         }
+        
 
         // This is a simple route as PKSM just grabs the base64 from the paged result, it's
         // only down to increment the download count
-        Database.Instance.IncrementDownload(code);
+        Database.Instance.IncrementDownload(entityType == "bundles" ? "bundle" : "pokemon",  code);
 
         return Ok();
     }
