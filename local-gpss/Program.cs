@@ -1,4 +1,3 @@
-using local_gpss.database;
 using local_gpss.utils;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,7 +18,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 };
 
+// This ensures that stuff like the ribbons database is initialized
 Helpers.Init();
-// Database.Instance.CountPokemons(); // Placeholder, this allows me to essentially do the seeding right away when testing stuff.
 
 app.Run();
