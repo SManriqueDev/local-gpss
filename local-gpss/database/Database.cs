@@ -234,20 +234,12 @@ public class Database
             }
         }
     }
-
-    public bool CodeExists(string code)
+    
+    #region Pokemon Functions
+    public dynamic? CheckIfPokemonExists(string base64, bool returnId = false)
     {
         var cmd = _connection.CreateCommand();
-        cmd.CommandText = "SELECT EXISTS(SELECT 1 FROM pokemon WHERE download_code = @code)";
-        cmd.Parameters.AddWithValue("@code", code);
-
-        return (Int64)cmd.ExecuteScalar() == 1 ? true : false;
-    }
-
-    public string? CheckIfPokemonExists(string base64)
-    {
-        var cmd = _connection.CreateCommand();
-        cmd.CommandText = "SELECT download_code FROM pokemon WHERE base_64 = @base64";
+        cmd.CommandText = $"SELECT {(returnId ? "id" : "download_code")} FROM pokemon WHERE base_64 = @base64";
         cmd.Parameters.AddWithValue("@base64", base64);
 
         using var reader = cmd.ExecuteReader();
@@ -256,9 +248,104 @@ public class Database
             return null;
         }
 
-        return reader.GetString(0);
+        return returnId ? reader.GetInt64(0) : reader.GetString(0);
+    }
+    
+    public long InsertPokemon(string base64, bool legal, string code, string generation)
+    {
+        var cmd = _connection.CreateCommand();
+        cmd.CommandText =
+            @"INSERT INTO pokemon (upload_datetime, download_code, download_count, generation, legal, base_64) VALUES (@upload_datetime, @download_code, @download_count, @generation, @legal, @base_64); SELECT last_insert_rowid();";
+        cmd.Parameters.AddWithValue("@upload_datetime", DateTime.Now);
+        cmd.Parameters.AddWithValue("@download_code", code);
+        cmd.Parameters.AddWithValue("@download_count", 0);
+        cmd.Parameters.AddWithValue("@generation", generation);
+        cmd.Parameters.AddWithValue("@legal", legal);
+        cmd.Parameters.AddWithValue("@base_64", base64);
+        
+        return (long)cmd.ExecuteScalar();
+    }
+    #endregion
+    
+    #region Bundle Functions
+
+    public string? CheckIfBundleExists(List<long> pokemonIds)
+    {
+        var valuesStr = string.Join(" UNION ALL ", pokemonIds.Select(id => $"SELECT {id} AS pokemon_id"));
+        
+        var cmd = _connection.CreateCommand();
+        cmd.CommandText = $"""
+                               WITH input_pokemon_ids AS (
+                                   {valuesStr}
+                               ), 
+                               bundles_with_matching_pokemon AS (
+                                   SELECT bundle_id
+                                   FROM bundle_pokemon
+                                   WHERE pokemon_id IN (SELECT pokemon_id FROM input_pokemon_ids)
+                                   GROUP BY bundle_id
+                                   HAVING COUNT(DISTINCT pokemon_id) = (SELECT COUNT(*) FROM input_pokemon_ids)
+                               )
+                               SELECT b.download_code
+                               FROM bundles_with_matching_pokemon bp
+                               JOIN bundle b ON bp.bundle_id = b.id
+                               LIMIT 1
+                           """;
+        Console.WriteLine(cmd.CommandText);
+        var reader = cmd.ExecuteReader();
+        
+        if (reader.Read())
+        {
+            return reader.IsDBNull(0) ? null : reader.GetString(0);
+        }
+        return null;
     }
 
+    
+    public void InsertBundle(bool legal, string code, string minGen, string maxGen, List<long> ids)
+    {
+        var cmd = _connection.CreateCommand();
+        cmd.CommandText =
+            @"INSERT INTO bundle (upload_datetime, download_code, download_count, legal, min_gen, max_gen) VALUES (@upload_datetime, @download_code, @download_count, @legal, @min_gen, @max_gen); SELECT last_insert_rowid();";
+        cmd.Parameters.AddWithValue("@upload_datetime", DateTime.Now);
+        cmd.Parameters.AddWithValue("@download_code", code);
+        cmd.Parameters.AddWithValue("@download_count", 0);
+        cmd.Parameters.AddWithValue("@legal", legal);
+        cmd.Parameters.AddWithValue("@min_gen", minGen);
+        cmd.Parameters.AddWithValue("@max_gen", maxGen);
+        
+        var bundleId = (long)cmd.ExecuteScalar();
+        
+        // Now to loop through and do a mass insert
+        cmd.Parameters.Clear();
+
+        cmd.CommandText = "INSERT INTO bundle_pokemon (pokemon_id, bundle_id) VALUES\n";
+        for (var i = 0; i < ids.Count; i++)
+        {
+            cmd.CommandText += $"({ids[i]}, {bundleId})";
+            if (i < ids.Count - 1)
+            {
+                cmd.CommandText += ",\n";
+            }
+            else
+            {
+                cmd.CommandText += ";";
+            }
+            
+        }
+        
+        cmd.ExecuteNonQuery();
+    }
+    #endregion
+    
+    #region Generic Functions
+    public bool CodeExists(string table, string code)
+    {
+        var cmd = _connection.CreateCommand();
+        cmd.CommandText = $"SELECT EXISTS(SELECT 1 FROM {table} WHERE download_code = @code)";
+        cmd.Parameters.AddWithValue("@code", code);
+
+        return (Int64)cmd.ExecuteScalar() == 1;
+    }
 
     public void IncrementDownload(string table, string code)
     {
@@ -273,22 +360,7 @@ public class Database
         }
         
     }
-
-    public void InsertPokemon(string base64, bool legal, string code, string generation)
-    {
-        var cmd = _connection.CreateCommand();
-        cmd.CommandText =
-            @"INSERT INTO pokemon (upload_datetime, download_code, download_count, generation, legal, base_64) VALUES (@upload_datetime, @download_code, @download_count, @generation, @legal, @base_64)";
-        cmd.Parameters.AddWithValue("@upload_datetime", DateTime.Now);
-        cmd.Parameters.AddWithValue("@download_code", code);
-        cmd.Parameters.AddWithValue("@download_count", 0);
-        cmd.Parameters.AddWithValue("@generation", generation);
-        cmd.Parameters.AddWithValue("@legal", legal);
-        cmd.Parameters.AddWithValue("@base_64", base64);
-
-        cmd.ExecuteNonQuery();
-    }
-
+    
     public int Count(string table, Search? search = null)
     {
         var cmd = _connection.CreateCommand();
@@ -372,6 +444,7 @@ public class Database
 
         return items;
     }
+    #endregion
 
     private string GenerateBaseSelectSql(string table, bool count, Search? search = null)
     {

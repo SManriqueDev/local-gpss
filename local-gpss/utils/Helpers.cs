@@ -1,3 +1,4 @@
+using System.Dynamic;
 using System.Text.Json;
 using local_gpss.database;
 using local_gpss.models;
@@ -88,7 +89,6 @@ public static class Helpers
     {
         using var memoryStream = new MemoryStream();
         pokemon.CopyTo(memoryStream);
-
 
         return new
         {
@@ -296,7 +296,7 @@ public static class Helpers
     }
 
 
-    public static string GenerateDownloadCode(int length = 10)
+    public static string GenerateDownloadCode(string table, int length = 10)
     {
         string code = "";
         while (true)
@@ -307,9 +307,8 @@ public static class Helpers
 
             // Now check to see if the code is in the database already and break if it isn't
 
-            if (Database.Instance!.CodeExists(code))
+            if (Database.Instance!.CodeExists(table, code))
             {
-                Console.WriteLine("fuck it exists");
                 continue;
             }
 
@@ -318,4 +317,14 @@ public static class Helpers
 
         return code;
     }
+    
+    // Credit: https://stackoverflow.com/a/9956981
+    public static bool DoesPropertyExist(dynamic obj, string name)
+    {
+        if (obj is ExpandoObject)
+            return ((IDictionary<string, object>)obj).ContainsKey(name);
+
+        return obj.GetType().GetProperty(name) != null;
+    }
+
 }
