@@ -3,17 +3,7 @@
 A local hostable version of the services that [PKSM](https://github.com/FlagBrew/PKSM) uses.
 
 ## How to Use
-Optionally grab the gpss.db from the release, and put it in the same directory as the application.
-
-Install PKSM 10.1.2 (or later) and open up settings, click on the `API` tab and set the server URL to the domain/IP running this server
-
-**NOTE** you must add a slash on the end of the URL or it will not work.
-
-After that it should be good to go, just make sure your server is running and listening for incoming connections on something other than localhost, and PKSM should be able to use auto legalization and GPSS again.
-
-If you prefer, you can also run it with Docker using the included Dockerfile, just make sure to copy the database over with the docker copy command if you want to use the database.
-
-If you want to change the port, which I think it may default to localhost:5000, please run the application with the arguments `--urls=http://0.0.0.0:<PORT HERE>/` this will run the application listening on all IPs with whatever port you chose
+See the [Setup Guide](https://github.com/FlagBrew/local-gpss/wiki/Server-Setup-Guide)
 
 ## Updating Auto Legality
 This is a pain to do, and is one of the reasons why Auto Legality never really stayed up to date.
