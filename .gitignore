@@ -6,6 +6,7 @@ riderModule.iml
 ./idea/
 *.DotSettings.user
 flagbrew2_*.json
-gpss.db
+*gpss.db
 .idea/
 output/
+local-gpss.json
