@@ -48,28 +48,37 @@ jobs:
         if: runner.os != 'Windows'
         run: chmod +x ./output/${{ matrix.output }}/local-gpss
 
+      - name: Create ZIP archive
+        shell: bash
+        run: |
+          cd output
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a -tzip ../${{ matrix.output }}.zip ${{ matrix.output }}/*
+          else
+            zip -r ../${{ matrix.output }}.zip ${{ matrix.output }}/*
+          fi
+
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.output }}
-          path: output/${{ matrix.output }}/*
+          path: ${{ matrix.output }}.zip
 
   release:
     name: Create Release
     needs: build
     runs-on: ubuntu-latest
-  
+
     steps:
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-          merge-multiple: false  # This ensures we get the original zips
-  
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*.zip  # This will catch the artifact ZIP files
+          files: artifacts/*/*.zip
           token: ${{ secrets.GITHUB_TOKEN }}
           name: Release ${{ github.ref_name }}
           tag_name: ${{ github.ref }}
