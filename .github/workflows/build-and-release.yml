@@ -37,6 +37,7 @@ jobs:
           dotnet-version: "9.0.x"
 
       - name: Publish ${{ matrix.arch }}
+        shell: bash
         run: |
           dotnet publish -c Release -o ./output/${{ matrix.output }} --self-contained true \
             -p:PublishReadyToRun=true -p:PublishSingleFile=true \
