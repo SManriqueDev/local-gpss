@@ -57,11 +57,14 @@ jobs:
         run: |
           msbuild ${{ github.workspace }}/PKHeX-Plugins/PKHeX.Core.AutoMod/PKHeX.Core.AutoMod.csproj /p:Configuration=Release /p:Platform="Any CPU"
 
-      - name: Prepare artifacts
+      - name: Prepare dlls
         run: |
           xcopy "${{ github.workspace }}\PKHeX-Plugins\PKHeX.Core.AutoMod\bin\Any CPU\Release\net9.0\PKHeX.Core.AutoMod.dll" ${{ github.workspace }}\deps /Y
           xcopy "${{ github.workspace }}\PKHeX\PKHeX.Core\bin\Any CPU\Release\net9.0\PKHeX.Core.dll" ${{ github.workspace }}\deps /Y
 
+      - name: Restore NuGet dependencies for local-gpss
+        run: nuget restore ${{ github.workspace }}/local-gpss.sln -NoCache
+        
       - name: Build local-gpss.csproj
         run: |
           msbuild ${{ github.workspace }}/local-gpss.csproj /p:Configuration=Release /p:Platform="Any CPU"
