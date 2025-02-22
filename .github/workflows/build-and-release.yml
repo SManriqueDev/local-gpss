@@ -51,7 +51,7 @@ jobs:
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build-${{ matrix.output }}
+          name: ${{ matrix.output }}
           path: output/${{ matrix.output }}/*
 
   release:
