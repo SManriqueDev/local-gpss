@@ -48,17 +48,27 @@ jobs:
         if: runner.os != 'Windows'
         run: chmod +x ./output/${{ matrix.output }}/local-gpss
 
+      - name: Create ZIP archive
+        shell: bash
+        run: |
+          cd output
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a -tzip ${{ matrix.output }}.zip ${{ matrix.output }}/*
+          else
+            zip -r ${{ matrix.output }}.zip ${{ matrix.output }}/*
+          fi
+
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.output }}
-          path: output/${{ matrix.output }}/*
+          name: ${{ matrix.output }}.zip
+          path: output/${{ matrix.output }}.zip
 
   release:
     name: Create Release
-    needs: build  # Run only after all builds succeed
+    needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')  # Run only on tag pushes
+    if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
       - name: Download all build artifacts
@@ -66,15 +76,12 @@ jobs:
         with:
           path: artifacts
 
-      - name: List downloaded files
-        run: ls -R artifacts
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**/*
+          files: artifacts/**/*.zip
           token: ${{ secrets.GITHUB_TOKEN }}
           name: Release ${{ github.ref_name }}
           tag_name: ${{ github.ref }}
-          draft: true # Releases should be draft until you can add release notes.
+          draft: true
           prerelease: false
