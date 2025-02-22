@@ -46,7 +46,7 @@ jobs:
 
       - name: Set execute permissions (Linux/macOS)
         if: runner.os != 'Windows'
-        run: chmod +x ./output/${{ matrix.output }}/yourapp
+        run: chmod +x ./output/${{ matrix.output }}/local-gpss
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
