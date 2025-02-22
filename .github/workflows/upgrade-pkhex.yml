@@ -62,6 +62,13 @@ jobs:
           xcopy "${{ github.workspace }}\PKHeX-Plugins\PKHeX.Core.AutoMod\bin\Any CPU\Release\net9.0\PKHeX.Core.AutoMod.dll" ${{ github.workspace }}\deps /Y
           xcopy "${{ github.workspace }}\PKHeX\PKHeX.Core\bin\Any CPU\Release\net9.0\PKHeX.Core.dll" ${{ github.workspace }}\deps /Y
 
+      - name: Remove other repo directories
+        run: |
+          # Remove PKHeX-Plugins directory
+          Remove-Item -Recurse -Force ${{ github.workspace }}/PKHeX-Plugins
+          # Remove PKHeX directory
+          Remove-Item -Recurse -Force ${{ github.workspace }}/PKHeX
+
       - name: Restore NuGet dependencies for local-gpss
         run: nuget restore ${{ github.workspace }}/local-gpss.sln -NoCache
         
