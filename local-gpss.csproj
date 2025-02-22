@@ -23,4 +23,12 @@
         </Reference>
     </ItemGroup>
 
+    <ItemGroup>
+      <Content Include=".github\workflows\build-and-release.yml" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Content Update="Output\**" CopyToPublishDirectory="Never" />
+    </ItemGroup>
+
 </Project>
