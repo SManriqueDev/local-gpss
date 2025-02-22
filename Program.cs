@@ -2,9 +2,16 @@ using local_gpss.utils;
 
 if (Helpers.IsRunningAsAdminOrRoot())
 {
-    // To prevent any security risk, you're not allowed to run this as root/admin.
-    Console.WriteLine("You may not run this program as root (Mac/Linux) or Administrator (Windows)");
-    Environment.Exit(2);
+    // To prevent any security risk, you must confirm you know what you're doing and that
+    // flagbrew and myself (Allen) are not responsible if something goes wrong.
+    Console.WriteLine("You're running this as an admin or root, this is considered unsafe");
+    Console.WriteLine("If you know what you're doing and you're willing to accept the risks (and agree that FlagBrew and the developer (Allen) are not responsible for any issues that occur)");
+    Console.WriteLine("Then press Y to continue, otherwise please run this as a regular user");
+    var key = Console.ReadKey();
+    if (key.Key != ConsoleKey.Y)
+    {
+        Environment.Exit(2);
+    }
 }
 
 var builder = WebApplication.CreateBuilder(args);
