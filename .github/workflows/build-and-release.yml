@@ -63,17 +63,19 @@ jobs:
         with:
           name: ${{ matrix.output }}
           path: ${{ matrix.output }}.zip
+          retention-days: 1
 
   release:
     name: Create Release
     needs: build
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          path: artifacts # In the future if they add the ability to skip decompressing, I'll remove the zip step above
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -82,5 +84,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           name: Release ${{ github.ref_name }}
           tag_name: ${{ github.ref }}
+          body: "Fill me in before releasing this."
           draft: true
           prerelease: false
