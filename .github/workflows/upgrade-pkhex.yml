@@ -1,0 +1,79 @@
+name: Upgrade PKHeX
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Checkout PKHeX Plugins
+        run: |
+          git clone -q --depth=5 --branch=cherrytree https://github.com/santacrab2/PKHeX-Plugins.git ${{ github.workspace }}/PKHeX-Plugins
+
+
+      - name: Checkout PKHeX
+        run: |
+          git clone -q --depth=5 --branch=master https://github.com/kwsch/PKHeX.git ${{ github.workspace }}/PKHeX
+
+      - name: Setup .NET 9.0
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Install NuGet
+        run: |
+          nuget update -self
+          nuget install nuget.commandline -OutputDirectory .nuget -ExcludeVersion
+          echo "$(pwd)/.nuget/nuget.commandline/tools" >> $GITHUB_PATH
+
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Restore NuGet dependencies for PKHeX-Plugins
+        run: nuget restore ${{ github.workspace }}/PKHeX-Plugins/PKHeX-Plugins.sln
+
+      - name: Restore NuGet dependencies for PKHeX
+        run: nuget restore ${{ github.workspace }}/PKHeX/PKHeX.sln -NoCache
+
+      - name: Build PKHeX.Core
+        run: |
+          msbuild ${{ github.workspace }}/PKHeX/PKHeX.Core/PKHeX.Core.csproj /p:Configuration=Release /p:Platform="Any CPU"
+
+      - name: Copy PKHeX.Core.dll to NuGet cache
+        shell: powershell
+        run: |
+          $nugetver = (Get-ChildItem "$env:UserProfile/.nuget/packages/pkhex.core" | Sort-Object -Property LastWriteTime -Descending)[0].Name
+          Copy-Item "${{ github.workspace }}/PKHeX/PKHeX.Core/bin/Any CPU/Release/net9.0/PKHeX.Core.dll" "$env:UserProfile/.nuget/packages/pkhex.core/$nugetver/lib/net9.0"
+
+      - name: Build PKHeX.Core.AutoMod
+        run: |
+          msbuild ${{ github.workspace }}/PKHeX-Plugins/PKHeX.Core.AutoMod/PKHeX.Core.AutoMod.csproj /p:Configuration=Release /p:Platform="Any CPU"
+
+      - name: Prepare artifacts
+        run: |
+          xcopy "${{ github.workspace }}\PKHeX-Plugins\PKHeX.Core.AutoMod\bin\Any CPU\Release\net9.0\PKHeX.Core.AutoMod.dll" ${{ github.workspace }}\deps /Y
+          xcopy "${{ github.workspace }}\PKHeX\PKHeX.Core\bin\Any CPU\Release\net9.0\PKHeX.Core.dll" ${{ github.workspace }}\deps /Y
+
+      - name: Build local-gpss.csproj
+        run: |
+          msbuild ${{ github.workspace }}/local-gpss.csproj /p:Configuration=Release /p:Platform="Any CPU"
+        continue-on-error: true
+        id: local-gpss-build
+        
+      # If the build was successful, we're good to commit the new DLLs.
+      - name: Commit and Push DLLs
+        if: steps.local-gpss-build.outcome == 'success'
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add deps/PKHeX.Core.dll deps/PKHeX.Core.AutoMod.dll
+          git commit -m "Update PKHeX.Core.dll and PKHeX.Core.AutoMod.dll"
+          git push origin main
