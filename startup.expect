@@ -1,0 +1,17 @@
+#!/usr/bin/expect -f
+
+spawn dotnet local-gpss.dll
+
+expect "Please choose the IP you wish to use"
+send "1\r"
+
+expect "You're running this as an admin or root, this is considered unsafe"
+send "y\r"
+
+expect "Please enter a port between 1 and 65535"
+send "8080\r"
+
+expect "Finally, it looks like this is your first time running Local GPSS (or running it from this directory) would you like to grab the gpss.db from the first release?"
+send "y\r"
+
+interact
