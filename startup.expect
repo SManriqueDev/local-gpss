@@ -2,11 +2,13 @@
 
 spawn dotnet local-gpss.dll
 
+expect "You're running this as an admin or root, this is considered unsafe"
+send "y\r"
+
+
 expect "Please choose the IP you wish to use"
 send "1\r"
 
-expect "You're running this as an admin or root, this is considered unsafe"
-send "y\r"
 
 expect "Please enter a port between 1 and 65535"
 send "8080\r"
